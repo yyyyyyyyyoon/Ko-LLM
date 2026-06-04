@@ -1,4 +1,3 @@
-import argparse
 import json
 from collections import Counter
 from pathlib import Path
@@ -8,26 +7,18 @@ from transformers import AutoTokenizer
 
 DATA_ROOT = Path(r"C:\Users\dbstj\dataset")
 TOKENIZER_DIR = DATA_ROOT / "tokenizer_bpe_64k"
-DEFAULT_OUTPUT_PATH = Path("outputs") / "tokenizer_eval_report.json"
+OUTPUT_PATH = Path("outputs") / "tokenizer_eval_report.json"
+MAX_DOCS_PER_GROUP = 10000
 MAX_EXAMPLES = 3
 
-DEFAULT_EVAL_CANDIDATES = {
+EVAL_FILES = {
     "ko": [
-        DATA_ROOT / "processed" / "kowiki_eval.jsonl",
-        DATA_ROOT / "processed" / "kowiki_valid.jsonl",
-        DATA_ROOT / "processed" / "kowiki_test.jsonl",
-        DATA_ROOT / "processed" / "ko_aihub_eval.jsonl",
-        DATA_ROOT / "processed" / "ko_aihub_valid.jsonl",
         DATA_ROOT / "processed" / "ko_aihub_test.jsonl",
     ],
     "en": [
-        DATA_ROOT / "processed" / "enwiki_eval.jsonl",
-        DATA_ROOT / "processed" / "enwiki_valid.jsonl",
         DATA_ROOT / "processed" / "enwiki_test.jsonl",
     ],
     "code": [
-        DATA_ROOT / "processed" / "code_eval.txt",
-        DATA_ROOT / "processed" / "code_valid.txt",
         DATA_ROOT / "processed" / "code_test.txt",
     ],
 }
@@ -46,52 +37,6 @@ TRAIN_FALLBACK_FILES = {
 }
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Evaluate tokenizer quality on holdout data. "
-            "Prefer non-training eval files; train files are used only as fallback."
-        )
-    )
-    parser.add_argument(
-        "--tokenizer-dir",
-        type=Path,
-        default=TOKENIZER_DIR,
-        help="Directory containing the saved tokenizer.",
-    )
-    parser.add_argument(
-        "--max-docs-per-group",
-        type=int,
-        default=10000,
-        help="Maximum documents to evaluate per group.",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=DEFAULT_OUTPUT_PATH,
-        help="JSON report output path.",
-    )
-    parser.add_argument(
-        "--ko-files",
-        type=Path,
-        nargs="*",
-        help="Explicit Korean evaluation files.",
-    )
-    parser.add_argument(
-        "--en-files",
-        type=Path,
-        nargs="*",
-        help="Explicit English evaluation files.",
-    )
-    parser.add_argument(
-        "--code-files",
-        type=Path,
-        nargs="*",
-        help="Explicit code evaluation files.",
-    )
-    return parser.parse_args()
-
-
 def iter_jsonl_text(file_path: Path):
     if not file_path.exists():
         print(f"[WARN] File not found: {file_path}")
@@ -108,11 +53,7 @@ def iter_jsonl_text(file_path: Path):
             except json.JSONDecodeError:
                 continue
 
-            if isinstance(obj, dict):
-                text = str(obj.get("text", "")).strip()
-            else:
-                text = ""
-
+            text = str(obj.get("text", "")).strip() if isinstance(obj, dict) else ""
             if text:
                 yield text
 
@@ -138,27 +79,20 @@ def iter_texts(file_path: Path):
         yield from iter_txt_blocks(file_path)
 
 
-def resolve_group_files(explicit_files, default_candidates, fallback_files, label: str):
-    if explicit_files:
-        resolved = [path for path in explicit_files if path.exists()]
-        missing = [path for path in explicit_files if not path.exists()]
-        for path in missing:
-            print(f"[WARN] Explicit {label} file not found: {path}")
-        return resolved, "explicit"
+def resolve_group_files(label: str):
+    eval_files = [path for path in EVAL_FILES[label] if path.exists()]
+    if eval_files:
+        return eval_files, "holdout"
 
-    resolved = [path for path in default_candidates if path.exists()]
-    if resolved:
-        return resolved, "holdout"
-
-    fallback = [path for path in fallback_files if path.exists()]
-    if fallback:
+    fallback_files = [path for path in TRAIN_FALLBACK_FILES[label] if path.exists()]
+    if fallback_files:
         print(f"[WARN] No holdout files found for {label}. Falling back to train files.")
-        return fallback, "train_fallback"
+        return fallback_files, "train_fallback"
 
     return [], "missing"
 
 
-def evaluate_group(tokenizer, label: str, files, max_docs: int):
+def evaluate_group(tokenizer, label: str, files):
     total_docs = 0
     total_chars = 0
     total_tokens = 0
@@ -173,7 +107,7 @@ def evaluate_group(tokenizer, label: str, files, max_docs: int):
 
     for file_path in files:
         for text in iter_texts(file_path):
-            if total_docs >= max_docs:
+            if total_docs >= MAX_DOCS_PER_GROUP:
                 break
 
             ids = tokenizer.encode(text, add_special_tokens=False)
@@ -201,7 +135,7 @@ def evaluate_group(tokenizer, label: str, files, max_docs: int):
                         }
                     )
 
-        if total_docs >= max_docs:
+        if total_docs >= MAX_DOCS_PER_GROUP:
             break
 
     if total_docs == 0:
@@ -209,7 +143,7 @@ def evaluate_group(tokenizer, label: str, files, max_docs: int):
         return None
 
     used_vocab = len(used_token_ids)
-    result = {
+    return {
         "label": label,
         "docs": total_docs,
         "chars": total_chars,
@@ -237,7 +171,6 @@ def evaluate_group(tokenizer, label: str, files, max_docs: int):
         ],
         "roundtrip_fail_examples": failed_examples,
     }
-    return result
 
 
 def print_result(result):
@@ -257,29 +190,17 @@ def print_result(result):
 
 
 def main():
-    args = parse_args()
-    tokenizer = AutoTokenizer.from_pretrained(str(args.tokenizer_dir))
-
-    group_specs = {
-        "ko": args.ko_files,
-        "en": args.en_files,
-        "code": args.code_files,
-    }
+    tokenizer = AutoTokenizer.from_pretrained(str(TOKENIZER_DIR))
 
     file_plan = {}
-    for label, explicit_files in group_specs.items():
-        files, source = resolve_group_files(
-            explicit_files=explicit_files,
-            default_candidates=DEFAULT_EVAL_CANDIDATES[label],
-            fallback_files=TRAIN_FALLBACK_FILES[label],
-            label=label,
-        )
+    for label in ("ko", "en", "code"):
+        files, source = resolve_group_files(label)
         file_plan[label] = {
             "source": source,
             "files": [str(path) for path in files],
         }
 
-    print("Tokenizer:", args.tokenizer_dir)
+    print("Tokenizer:", TOKENIZER_DIR)
     print("Vocab size:", tokenizer.vocab_size)
     print("File plan:")
     for label, info in file_plan.items():
@@ -288,26 +209,21 @@ def main():
     results = []
     for label in ("ko", "en", "code"):
         files = [Path(path) for path in file_plan[label]["files"]]
-        result = evaluate_group(
-            tokenizer=tokenizer,
-            label=label,
-            files=files,
-            max_docs=args.max_docs_per_group,
-        )
+        result = evaluate_group(tokenizer, label, files)
         if result is not None:
             result["file_source"] = file_plan[label]["source"]
             result["files"] = file_plan[label]["files"]
             results.append(result)
 
     report = {
-        "tokenizer_dir": str(args.tokenizer_dir),
+        "tokenizer_dir": str(TOKENIZER_DIR),
         "vocab_size": tokenizer.vocab_size,
-        "max_docs_per_group": args.max_docs_per_group,
+        "max_docs_per_group": MAX_DOCS_PER_GROUP,
         "results": results,
     }
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_PATH.write_text(
         json.dumps(report, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
@@ -315,7 +231,7 @@ def main():
     print("\n===== Tokenizer Evaluation Result =====")
     for result in results:
         print_result(result)
-    print(f"\nReport saved to: {args.output}")
+    print(f"\nReport saved to: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

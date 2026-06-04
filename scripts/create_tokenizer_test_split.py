@@ -1,4 +1,3 @@
-import argparse
 import json
 import random
 from pathlib import Path
@@ -9,6 +8,11 @@ PROCESSED_DIR = DATA_ROOT / "processed"
 OUTPUT_MANIFEST = Path("outputs") / "tokenizer_test_split_manifest.json"
 GB = 1024 ** 3
 TOTAL_TARGET_GB = 5
+SEED = 42
+TEXT_TEST_DOCS = 5000
+CODE_TEST_BLOCKS = 5000
+MIN_TEXT_CHARS = 50
+MIN_CODE_CHARS = 30
 
 TEXT_SOURCES = {
     "kowiki": PROCESSED_DIR / "kowiki_train.jsonl",
@@ -26,52 +30,6 @@ TRAIN_BUDGETS = {
 
 KO_SOURCE_ORDER = ["kowiki", "ko_aihub"]
 EN_SOURCE_ORDER = ["enwiki"]
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Create tokenizer test splits using only data that was not consumed by the "
-            "existing tokenizer training build."
-        )
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for deterministic reservoir sampling.",
-    )
-    parser.add_argument(
-        "--text-test-docs",
-        type=int,
-        default=5000,
-        help="Number of holdout documents to sample per text source.",
-    )
-    parser.add_argument(
-        "--code-test-blocks",
-        type=int,
-        default=5000,
-        help="Number of holdout code blocks to sample.",
-    )
-    parser.add_argument(
-        "--min-text-chars",
-        type=int,
-        default=50,
-        help="Minimum character length for text documents.",
-    )
-    parser.add_argument(
-        "--min-code-chars",
-        type=int,
-        default=30,
-        help="Minimum character length for code blocks.",
-    )
-    parser.add_argument(
-        "--output-manifest",
-        type=Path,
-        default=OUTPUT_MANIFEST,
-        help="Path to write split metadata.",
-    )
-    return parser.parse_args()
 
 
 def byte_len(text: str) -> int:
@@ -250,19 +208,17 @@ def sort_code_sample(blocks):
 
 
 def main():
-    args = parse_args()
-
     ko_usage = consume_text_budget(KO_SOURCE_ORDER, TRAIN_BUDGETS["ko"])
     en_usage = consume_text_budget(EN_SOURCE_ORDER, TRAIN_BUDGETS["en"])
     code_usage = consume_code_budget(CODE_SOURCE, TRAIN_BUDGETS["code"])
 
     manifest = {
-        "seed": args.seed,
+        "seed": SEED,
         "rules": {
-            "text_test_docs_per_source": args.text_test_docs,
-            "code_test_blocks": args.code_test_blocks,
-            "min_text_chars": args.min_text_chars,
-            "min_code_chars": args.min_code_chars,
+            "text_test_docs_per_source": TEXT_TEST_DOCS,
+            "code_test_blocks": CODE_TEST_BLOCKS,
+            "min_text_chars": MIN_TEXT_CHARS,
+            "min_code_chars": MIN_CODE_CHARS,
             "train_reconstruction": "Replays the original tokenizer-train prefix consumption and samples only from the unused suffix.",
         },
         "train_usage": {
@@ -282,9 +238,9 @@ def main():
         sample, eligible_count = sample_unused_text_records(
             path=path,
             skip_docs=info["consumed_docs"],
-            sample_size=args.text_test_docs,
-            min_chars=args.min_text_chars,
-            seed=args.seed,
+            sample_size=TEXT_TEST_DOCS,
+            min_chars=MIN_TEXT_CHARS,
+            seed=SEED,
         )
         sample = sort_text_sample(sample)
 
@@ -308,9 +264,9 @@ def main():
         blocks, eligible_count = sample_unused_code_blocks(
             path=CODE_SOURCE,
             consumed_bytes=code_usage["consumed_bytes"],
-            sample_size=args.code_test_blocks,
-            min_chars=args.min_code_chars,
-            seed=args.seed,
+            sample_size=CODE_TEST_BLOCKS,
+            min_chars=MIN_CODE_CHARS,
+            seed=SEED,
         )
         blocks = sort_code_sample(blocks)
 
@@ -328,12 +284,12 @@ def main():
             "fully_consumed_by_train": code_usage["fully_consumed"],
         }
 
-    args.output_manifest.parent.mkdir(parents=True, exist_ok=True)
-    args.output_manifest.write_text(
+    OUTPUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_MANIFEST.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print(f"[DONE] Manifest saved to: {args.output_manifest}")
+    print(f"[DONE] Manifest saved to: {OUTPUT_MANIFEST}")
 
 
 if __name__ == "__main__":
