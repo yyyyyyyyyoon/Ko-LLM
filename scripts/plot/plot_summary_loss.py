@@ -3,22 +3,22 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Path
-LOG_PATH = Path(r"C:\Users\dbstj\dataset\0. outputs\summary model")
+from project_paths import OUTPUT_ROOT
 
-# LOG_PATH가 폴더면 train_log.csv를 자동으로 찾음
-if LOG_PATH.is_dir():
-    LOG_FILE = LOG_PATH / "train_log.csv"
-else:
-    LOG_FILE = LOG_PATH
+# Path
+RUN_NAME = "summary_model"
+
+LOG_FILE = OUTPUT_ROOT / RUN_NAME / "logs" / "train_log.csv"
+PLOT_DIR = OUTPUT_ROOT / RUN_NAME / "plots"
 
 if not LOG_FILE.exists():
     raise FileNotFoundError(f"train_log.csv not found: {LOG_FILE}")
 
-OUTPUT_DIR = LOG_FILE.parent
-TRAIN_PNG = OUTPUT_DIR / "summary_model_train_loss.png"
-EVAL_PNG = OUTPUT_DIR / "summary_model_eval_loss.png"
-POINTS_CSV = OUTPUT_DIR / "summary_model_loss_points.csv"
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
+TRAIN_PNG = PLOT_DIR / "summary_model_train_loss.png"
+EVAL_PNG = PLOT_DIR / "summary_model_eval_loss.png"
+POINTS_CSV = PLOT_DIR / "summary_model_loss_points.csv"
 
 # Load log
 df = pd.read_csv(LOG_FILE)

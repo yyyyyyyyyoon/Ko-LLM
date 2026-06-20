@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/TextDataMining.iml" filepath="$PROJECT_DIR$/.idea/TextDataMining.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/Ko-LLM.iml" filepath="$PROJECT_DIR$/.idea/Ko-LLM.iml" />
     </modules>
   </component>
 </project>

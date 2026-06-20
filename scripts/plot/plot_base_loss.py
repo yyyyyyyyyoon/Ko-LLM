@@ -3,26 +3,22 @@ from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from project_paths import OUTPUT_ROOT
 
-# =========================
 # Path
-# =========================
-# train_log.csv가 있는 경로에 맞게 수정
-LOG_PATH = Path(r"C:\Users\dbstj\dataset\0. outputs\base model")
+RUN_NAME = "base_model"
 
-# LOG_PATH가 폴더면 train_log.csv 자동 탐색
-if LOG_PATH.is_dir():
-    LOG_FILE = LOG_PATH / "train_log.csv"
-else:
-    LOG_FILE = LOG_PATH
+LOG_FILE = OUTPUT_ROOT / RUN_NAME / "logs" / "train_log.csv"
+PLOT_DIR = OUTPUT_ROOT / RUN_NAME / "plots"
 
 if not LOG_FILE.exists():
     raise FileNotFoundError(f"train_log.csv not found: {LOG_FILE}")
 
-OUTPUT_DIR = LOG_FILE.parent
-TRAIN_PNG = OUTPUT_DIR / "base_model_train_loss_smoothed.png"
-EVAL_PNG = OUTPUT_DIR / "base_model_eval_loss.png"
-POINTS_CSV = OUTPUT_DIR / "base_model_loss_points.csv"
+PLOT_DIR.mkdir(parents=True, exist_ok=True)
+
+TRAIN_PNG = PLOT_DIR / "base_model_train_loss.png"
+EVAL_PNG = PLOT_DIR / "base_model_eval_loss.png"
+POINTS_CSV = PLOT_DIR / "base_model_loss_points.csv"
 
 # Settings
 SMOOTH_WINDOW = 200
@@ -61,7 +57,6 @@ train_df["smooth_train_loss"] = train_df[train_loss_col].rolling(
     min_periods=1
 ).mean()
 
-# eval loss는 평가 간격이 넓어서 과도하게 smoothing하지 않는 편이 좋음
 eval_df["smooth_eval_loss"] = eval_df[eval_loss_col].rolling(
     window=3,
     min_periods=1

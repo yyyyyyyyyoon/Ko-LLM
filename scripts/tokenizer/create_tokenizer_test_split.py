@@ -2,13 +2,15 @@ import json
 import random
 from pathlib import Path
 
+from project_paths import PROCESSED_DATA_DIR, TOKENIZER_OUTPUT_DIR
 
-DATA_ROOT = Path(r"C:\Users\dbstj\dataset")
-PROCESSED_DIR = DATA_ROOT / "processed"
-OUTPUT_MANIFEST = Path("outputs") / "tokenizer_test_split_manifest.json"
+PROCESSED_DIR = PROCESSED_DATA_DIR
+OUTPUT_MANIFEST = TOKENIZER_OUTPUT_DIR / "tokenizer_test_split_manifest.json"
+
 GB = 1024 ** 3
 TOTAL_TARGET_GB = 5
 SEED = 42
+
 TEXT_TEST_DOCS = 5000
 CODE_TEST_BLOCKS = 5000
 MIN_TEXT_CHARS = 50
@@ -84,6 +86,15 @@ def consume_text_budget(source_names, budget_bytes: int):
         consumed_docs = 0
         consumed_bytes = 0
 
+        if not path.exists():
+            print(f"[WARN] Source not found: {path}")
+            usage[source_name] = {
+                "path": str(path),
+                "consumed_docs": 0,
+                "consumed_bytes": 0,
+            }
+            continue
+
         for record in stream_jsonl_records(path):
             size = record["train_block_bytes"]
             if consumed_bytes + size > remaining:
@@ -97,6 +108,7 @@ def consume_text_budget(source_names, budget_bytes: int):
             "consumed_docs": consumed_docs,
             "consumed_bytes": consumed_bytes,
         }
+
         remaining -= consumed_bytes
         if remaining <= 0:
             break

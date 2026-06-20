@@ -6,8 +6,7 @@ from typing import Iterator, List
 import torch
 from transformers import AutoTokenizer
 
-
-DATA_ROOT = Path("/home/aiselab/workspace/ko-llm/dataset")
+from project_paths import DATA_ROOT, TOKENIZER_DIR, PACKED_DATA_DIR
 
 KO_FILES = [
     DATA_ROOT / "kowiki_train.jsonl",
@@ -22,9 +21,7 @@ CODE_FILES = [
     DATA_ROOT / "code_train.jsonl",
 ]
 
-TOKENIZER_DIR = DATA_ROOT / "tokenizer_bpe_64k"
-
-OUTPUT_DIR = DATA_ROOT / "packed_corpus_4k"
+OUTPUT_DIR = PACKED_DATA_DIR
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 BLOCK_SIZE = 4096

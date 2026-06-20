@@ -4,9 +4,11 @@ from pathlib import Path
 from tokenizers import ByteLevelBPETokenizer
 from transformers import PreTrainedTokenizerFast
 
-DATA_ROOT = Path(r"C:\Users\dbstj\dataset")
-TRAIN_FILE = DATA_ROOT / "tokenizer_train" / "tokenizer_train_data.txt"
-DEFAULT_REPORT_DIR = Path("outputs")
+from project_paths import TOKENIZER_TRAIN_FILE, TOKENIZER_DIR, OUTPUT_ROOT
+
+DEFAULT_VOCAB_SIZE = 64000
+DEFAULT_REPORT_DIR = OUTPUT_ROOT / "tokenizer"
+
 SPECIAL_TOKENS = [
     "<pad>",
     "<unk>",
@@ -24,30 +26,32 @@ SPECIAL_TOKENS = [
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train a byte-level BPE tokenizer.")
+
     parser.add_argument(
         "--vocab-size",
         type=int,
-        default=64000,
+        default=DEFAULT_VOCAB_SIZE,
         help="Vocabulary size for tokenizer training.",
     )
     parser.add_argument(
         "--train-file",
         type=Path,
-        default=TRAIN_FILE,
+        default=TOKENIZER_TRAIN_FILE,
         help="Training text file path.",
     )
     parser.add_argument(
         "--save-dir",
         type=Path,
         default=None,
-        help="Directory to save the trained tokenizer. Defaults to dataset/tokenizer_bpe_<vocab-size>.",
+        help="Directory to save the trained tokenizer. Defaults to tokenizer_bpe_<vocab-size>k.",
     )
     parser.add_argument(
         "--report-path",
         type=Path,
         default=None,
-        help="UTF-8 debug report path. Defaults to outputs/tokenizer_debug_<vocab-size>.txt.",
+        help="UTF-8 debug report path. Defaults to outputs/tokenizer/tokenizer_debug_<vocab-size>k.txt.",
     )
+
     return parser.parse_args()
 
 
@@ -57,8 +61,19 @@ def safe_token_preview(tokens):
 
 def main():
     args = parse_args()
-    save_dir = args.save_dir or (DATA_ROOT / f"tokenizer_bpe_{args.vocab_size // 1000}k")
-    report_path = args.report_path or (DEFAULT_REPORT_DIR / f"tokenizer_debug_{args.vocab_size // 1000}k.txt")
+
+    vocab_name = f"tokenizer_bpe_{args.vocab_size // 1000}k"
+
+    save_dir = args.save_dir or (
+        TOKENIZER_DIR if args.vocab_size == DEFAULT_VOCAB_SIZE else TOKENIZER_DIR.parent / vocab_name
+    )
+
+    report_path = args.report_path or (
+        DEFAULT_REPORT_DIR / f"tokenizer_debug_{args.vocab_size // 1000}k.txt"
+    )
+
+    if not args.train_file.exists():
+        raise FileNotFoundError(f"Tokenizer training file not found: {args.train_file}")
 
     save_dir.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +87,7 @@ def main():
     )
 
     tokenizer.save_model(str(save_dir))
+
     tokenizer_json_path = save_dir / "tokenizer.json"
     tokenizer.save(str(tokenizer_json_path))
 
@@ -83,6 +99,7 @@ def main():
         eos_token="<eos>",
         additional_special_tokens=SPECIAL_TOKENS[4:],
     )
+
     fast_tokenizer.save_pretrained(str(save_dir))
 
     print("Tokenizer saved to:", save_dir)

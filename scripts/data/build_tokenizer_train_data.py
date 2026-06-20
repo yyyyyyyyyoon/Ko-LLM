@@ -1,25 +1,25 @@
 import json
 from pathlib import Path
 
+from project_paths import PROCESSED_DATA_DIR, TOKENIZER_TRAIN_DIR, TOKENIZER_TRAIN_FILE
 
-DATA_ROOT = Path(r"C:\Users\dbstj\dataset")
-PROCESSED_DIR = DATA_ROOT / "processed"
 
 KOREAN_JSONL_FILES = [
-    PROCESSED_DIR / "kowiki_train.jsonl",
-    PROCESSED_DIR / "ko_aihub_train.jsonl",
+    PROCESSED_DATA_DIR / "kowiki_train.jsonl",
+    PROCESSED_DATA_DIR / "ko_aihub_train.jsonl",
 ]
 
 ENGLISH_JSONL_FILES = [
-    PROCESSED_DIR / "enwiki_train.jsonl",
+    PROCESSED_DATA_DIR / "enwiki_train.jsonl",
 ]
 
-CODE_TRAIN_FILE = PROCESSED_DIR / "code_tokenizer_train.txt"
-CODE_FALLBACK_FILE = PROCESSED_DIR / "code_train.txt"
+CODE_TRAIN_FILE = PROCESSED_DATA_DIR / "code_tokenizer_train.txt"
+CODE_FALLBACK_FILE = PROCESSED_DATA_DIR / "code_train.txt"
 
-OUTPUT_DIR = DATA_ROOT / "tokenizer_train"
+OUTPUT_DIR = TOKENIZER_TRAIN_DIR
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_FILE = OUTPUT_DIR / "tokenizer_train_data.txt"
+
+OUTPUT_FILE = TOKENIZER_TRAIN_FILE
 
 TOTAL_TARGET_GB = 5
 GB = 1024 ** 3

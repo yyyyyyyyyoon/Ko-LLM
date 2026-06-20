@@ -4,35 +4,35 @@ from pathlib import Path
 
 from transformers import AutoTokenizer
 
+from project_paths import PROCESSED_DATA_DIR, TOKENIZER_DIR, TOKENIZER_OUTPUT_DIR
 
-DATA_ROOT = Path(r"C:\Users\dbstj\dataset")
-TOKENIZER_DIR = DATA_ROOT / "tokenizer_bpe_64k"
-OUTPUT_PATH = Path("outputs") / "tokenizer_eval_report.json"
+OUTPUT_PATH = TOKENIZER_OUTPUT_DIR / "tokenizer_eval_report.json"
+
 MAX_DOCS_PER_GROUP = 10000
 MAX_EXAMPLES = 3
 
 EVAL_FILES = {
     "ko": [
-        DATA_ROOT / "processed" / "ko_aihub_test.jsonl",
+        PROCESSED_DATA_DIR / "ko_aihub_test.jsonl",
     ],
     "en": [
-        DATA_ROOT / "processed" / "enwiki_test.jsonl",
+        PROCESSED_DATA_DIR / "enwiki_test.jsonl",
     ],
     "code": [
-        DATA_ROOT / "processed" / "code_test.txt",
+        PROCESSED_DATA_DIR / "code_test.txt",
     ],
 }
 
 TRAIN_FALLBACK_FILES = {
     "ko": [
-        DATA_ROOT / "processed" / "kowiki_train.jsonl",
-        DATA_ROOT / "processed" / "ko_aihub_train.jsonl",
+        PROCESSED_DATA_DIR / "kowiki_train.jsonl",
+        PROCESSED_DATA_DIR / "ko_aihub_train.jsonl",
     ],
     "en": [
-        DATA_ROOT / "processed" / "enwiki_train.jsonl",
+        PROCESSED_DATA_DIR / "enwiki_train.jsonl",
     ],
     "code": [
-        DATA_ROOT / "processed" / "code_train.txt",
+        PROCESSED_DATA_DIR / "code_train.txt",
     ],
 }
 

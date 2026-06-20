@@ -10,11 +10,16 @@ from transformers import AutoTokenizer
 
 from base_model import KLLMConfig, KLLMForCausalLM
 
+from project_paths import DATA_ROOT, TOKENIZER_DIR, OUTPUT_ROOT
+
 # Eval Config
-CHECKPOINT_DIR = Path('/home/aiselab/workspace/ko-llm/outputs/summary_model_step144000/checkpoints/step_32503')
-TEST_JSONL = Path('/home/aiselab/workspace/ko-llm/dataset/test_sample500.jsonl')
-TOKENIZER_DIR = Path('/home/aiselab/workspace/ko-llm/dataset/tokenizer_bpe_64k')
-OUTPUT_DIR = Path('/home/aiselab/workspace/ko-llm/outputs/summary_model_eval/step_32503_sample500')
+SUMMARY_RUN_NAME = 'summary_model'
+CHECKPOINT_STEP = 'step_XXXXX'
+EVAL_RUN_NAME = f'{CHECKPOINT_STEP}'
+
+CHECKPOINT_DIR = OUTPUT_ROOT / SUMMARY_RUN_NAME / 'checkpoints' / CHECKPOINT_STEP
+TEST_JSONL = DATA_ROOT / 'test.jsonl'
+OUTPUT_DIR = OUTPUT_ROOT / 'summary_model_eval' / EVAL_RUN_NAME
 
 MAX_LENGTH = 4096
 BATCH_SIZE = 1
